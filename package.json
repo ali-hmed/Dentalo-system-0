@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:worker": "opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "next lint",
@@ -35,7 +34,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.13",
     "@tailwindcss/forms": "^0.5.10",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.13.10",
@@ -50,8 +48,7 @@
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "vite": "^5.4.14",
-    "vitest": "^3.1.1",
-    "wrangler": "^4.152.0"
+    "vitest": "^3.1.1"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
