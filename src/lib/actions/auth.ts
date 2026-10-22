@@ -71,6 +71,19 @@ export async function loginAction(
     return { success: false, error: 'Invalid email address or password.' };
   }
 
+  // Seamlessly upgrade legacy Argon2 hash to bcrypt on successful login
+  if (user.passwordHash.startsWith('$argon2')) {
+    try {
+      const upgradedHash = await hashPassword(parsed.data.password);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: upgradedHash },
+      });
+    } catch {
+      // Non-blocking background migration
+    }
+  }
+
   // 6. Create session & set cookie
   const userAgent = headersList.get('user-agent') || undefined;
   const { token, expiresAt } = await createSession(user.id, ip, userAgent);

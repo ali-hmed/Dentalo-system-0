@@ -16,7 +16,7 @@ async function main() {
   // 2. Super Admin User
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@dentalo.app' },
-    update: {},
+    update: { passwordHash: adminPasswordHash },
     create: {
       email: 'admin@dentalo.app',
       name: 'Platform Super Admin',
@@ -46,7 +46,7 @@ async function main() {
   // Owner 1
   const owner1 = await prisma.user.upsert({
     where: { email: 'dr.ahmed@mogadishudental.so' },
-    update: {},
+    update: { passwordHash: ownerPasswordHash },
     create: {
       email: 'dr.ahmed@mogadishudental.so',
       name: 'Dr. Ahmed Warsame',
@@ -75,7 +75,7 @@ async function main() {
   // Dentist 1
   const dentist1User = await prisma.user.upsert({
     where: { email: 'dr.fadumo@mogadishudental.so' },
-    update: {},
+    update: { passwordHash: dentistPasswordHash },
     create: {
       email: 'dr.fadumo@mogadishudental.so',
       name: 'Dr. Fadumo Nur',
@@ -128,7 +128,7 @@ async function main() {
 
   const owner2 = await prisma.user.upsert({
     where: { email: 'dr.guled@hargeisasmile.so' },
-    update: {},
+    update: { passwordHash: ownerPasswordHash },
     create: {
       email: 'dr.guled@hargeisasmile.so',
       name: 'Dr. Guled Hassan',
