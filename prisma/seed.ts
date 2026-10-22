@@ -1,22 +1,17 @@
 import { PrismaClient } from '@prisma/client';
-import { hash } from '@node-rs/argon2';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-const ARGON2_OPTIONS = {
-  memoryCost: 19456,
-  timeCost: 2,
-  outputLen: 32,
-  parallelism: 1,
-};
+const SALT_ROUNDS = 10;
 
 async function main() {
   console.log('Seeding Dentalo database...');
 
   // 1. Password hashes
-  const adminPasswordHash = await hash('Admin1234!', ARGON2_OPTIONS);
-  const ownerPasswordHash = await hash('ClinicOwner123!', ARGON2_OPTIONS);
-  const dentistPasswordHash = await hash('Dentist123!', ARGON2_OPTIONS);
+  const adminPasswordHash = await bcrypt.hash('Admin1234!', SALT_ROUNDS);
+  const ownerPasswordHash = await bcrypt.hash('ClinicOwner123!', SALT_ROUNDS);
+  const dentistPasswordHash = await bcrypt.hash('Dentist123!', SALT_ROUNDS);
 
   // 2. Super Admin User
   const superAdmin = await prisma.user.upsert({

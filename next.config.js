@@ -1,3 +1,5 @@
+process.env.NEXT_IGNORE_INCORRECT_LOCKFILE = '1';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -7,7 +9,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   experimental: {
-    serverComponentsExternalPackages: ['@node-rs/argon2', '@prisma/client'],
+    serverComponentsExternalPackages: ['@prisma/client'],
     serverActions: {
       bodySizeLimit: '2mb',
     },
