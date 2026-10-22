@@ -1,0 +1,442 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dentalo – Multi-tenant Dental Clinic Management System
+// Prisma Schema  •  PostgreSQL (Neon)
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ENUMS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+enum UserRole {
+  SUPER_ADMIN
+  COMPANY_OWNER
+  COMPANY_STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+  PENDING_SETUP
+}
+
+enum StaffType {
+  OWNER
+  DENTIST
+  RECEPTIONIST
+  HYGIENIST
+  ASSISTANT
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PatientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentType {
+  CHECKUP
+  TREATMENT
+  EMERGENCY
+  CONSULTATION
+  FOLLOW_UP
+}
+
+enum VisitStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TreatmentStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum AuditSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  IDENTITY & AUTH
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Platform user – may belong to zero or more companies via CompanyMembership.
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         UserRole   @default(COMPANY_STAFF)
+  status       UserStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  sessions          Session[]
+  memberships        CompanyMembership[]
+  sentInvitations    Invitation[]       @relation("InvitedByUser")
+  supportSessions    SupportSession[]   @relation("SuperAdminSessions")
+  auditLogs          AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+/// Server-side session token for cookie-based auth.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COMPANY (TENANT)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// A dental clinic / practice – the tenant boundary.
+model Company {
+  id       String        @id @default(cuid())
+  name     String
+  slug     String        @unique
+  phone    String?
+  email    String?
+  address  String?
+  city     String?
+  status   CompanyStatus @default(PENDING_SETUP)
+  settings Json?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  memberships      CompanyMembership[]
+  invitations      Invitation[]
+  patients         Patient[]
+  appointments     Appointment[]
+  visits           Visit[]
+  treatmentRecords TreatmentRecord[]
+  supportSessions  SupportSession[]
+  auditLogs        AuditLog[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("companies")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MEMBERSHIP & STAFF
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Join table linking a User to a Company with a staff type.
+model CompanyMembership {
+  id        String           @id @default(cuid())
+  userId    String
+  companyId String
+  staffType StaffType        @default(DENTIST)
+  status    MembershipStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  staffProfile StaffProfile?
+  appointments Appointment[] @relation("DentistAppointments")
+  visits       Visit[]       @relation("DentistVisits")
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([userId])
+  @@index([companyId, staffType])
+  @@map("company_memberships")
+}
+
+/// Invitation to join a company (sent via email).
+model Invitation {
+  id        String           @id @default(cuid())
+  email     String
+  companyId String
+  role      UserRole
+  staffType StaffType
+  token     String           @unique
+  expiresAt DateTime         @db.Timestamptz(3)
+  status    InvitationStatus @default(PENDING)
+
+  invitedById String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  // Relations
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invitedBy User    @relation("InvitedByUser", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([token])
+  @@index([companyId])
+  @@index([email, companyId])
+  @@map("invitations")
+}
+
+/// Extended profile for clinical staff (dentists, hygienists, etc.).
+model StaffProfile {
+  id             String  @id @default(cuid())
+  membershipId   String  @unique
+  specialization String?
+  licenseNumber  String?
+  workingHours   Json?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  membership CompanyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@map("staff_profiles")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  PATIENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// A patient belonging to a specific dental clinic.
+model Patient {
+  id             String        @id @default(cuid())
+  companyId      String
+  fullName       String
+  phone          String
+  email          String?
+  dateOfBirth    DateTime?     @db.Date
+  gender         Gender?
+  medicalHistory String?       @db.Text
+  allergies      String?       @db.Text
+  notes          String?       @db.Text
+  status         PatientStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  appointments Appointment[]
+  visits       Visit[]
+
+  @@index([companyId])
+  @@index([companyId, fullName])
+  @@index([companyId, phone])
+  @@index([companyId, status])
+  @@map("patients")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  APPOINTMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// A scheduled appointment at a dental clinic.
+model Appointment {
+  id                 String            @id @default(cuid())
+  companyId          String
+  patientId          String
+  dentistId          String
+  date               DateTime          @db.Date
+  startTime          DateTime          @db.Timestamptz(3)
+  endTime            DateTime          @db.Timestamptz(3)
+  status             AppointmentStatus @default(SCHEDULED)
+  type               AppointmentType   @default(CHECKUP)
+  notes              String?           @db.Text
+  cancellationReason String?           @db.Text
+  version            Int               @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  company Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  patient Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  dentist CompanyMembership  @relation("DentistAppointments", fields: [dentistId], references: [id], onDelete: Restrict)
+  visits  Visit[]
+
+  @@index([companyId])
+  @@index([companyId, date])
+  @@index([companyId, dentistId, date])
+  @@index([companyId, patientId])
+  @@index([companyId, status])
+  @@index([dentistId, startTime, endTime])
+  @@map("appointments")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  VISITS & TREATMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// A clinical visit – may or may not originate from a scheduled appointment.
+model Visit {
+  id                   String      @id @default(cuid())
+  companyId            String
+  patientId            String
+  appointmentId        String?
+  dentistId            String
+  date                 DateTime    @db.Timestamptz(3)
+  chiefComplaint       String?     @db.Text
+  examination          String?     @db.Text
+  diagnosis            String?     @db.Text
+  notes                String?     @db.Text
+  followUpInstructions String?     @db.Text
+  status               VisitStatus @default(IN_PROGRESS)
+  version              Int         @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  patient          Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  appointment      Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  dentist          CompanyMembership  @relation("DentistVisits", fields: [dentistId], references: [id], onDelete: Restrict)
+  treatmentRecords TreatmentRecord[]
+
+  @@index([companyId])
+  @@index([companyId, patientId])
+  @@index([companyId, dentistId])
+  @@index([companyId, date])
+  @@index([appointmentId])
+  @@map("visits")
+}
+
+/// Individual procedure performed during a visit.
+model TreatmentRecord {
+  id            String          @id @default(cuid())
+  visitId       String
+  companyId     String
+  procedureName String
+  toothNumber   String?
+  description   String?         @db.Text
+  notes         String?         @db.Text
+  status        TreatmentStatus @default(PLANNED)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  // Relations
+  visit   Visit   @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([visitId])
+  @@index([companyId])
+  @@index([companyId, procedureName])
+  @@map("treatment_records")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SUPER-ADMIN SUPPORT & AUDIT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Break-glass session allowing a super admin to access a tenant's data.
+model SupportSession {
+  id              String   @id @default(cuid())
+  superAdminId    String
+  companyId       String
+  reason          String   @db.Text
+  ticketReference String?
+  expiresAt       DateTime @db.Timestamptz(3)
+  isActive        Boolean  @default(true)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+
+  // Relations
+  superAdmin User    @relation("SuperAdminSessions", fields: [superAdminId], references: [id], onDelete: Restrict)
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([superAdminId])
+  @@index([companyId])
+  @@index([isActive, expiresAt])
+  @@map("support_sessions")
+}
+
+/// Immutable audit trail for all security-relevant actions.
+model AuditLog {
+  id         String        @id @default(cuid())
+  userId     String
+  companyId  String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  severity   AuditSeverity @default(INFO)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([severity])
+  @@map("audit_logs")
+}
