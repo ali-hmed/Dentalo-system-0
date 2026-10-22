@@ -44,3 +44,22 @@ export function formatCurrency(amount: number): string {
     currency: 'USD',
   }).format(amount);
 }
+
+export function getDateStringInTz(date: Date | string = new Date()): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Mogadishu',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+export function formatMonthYear(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('en-GB', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Africa/Mogadishu',
+  }).format(d);
+}

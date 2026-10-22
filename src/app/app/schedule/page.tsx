@@ -1,12 +1,9 @@
 import React from 'react';
-import Link from 'next/link';
 import { getTenantClient } from '@/lib/db';
 import { getSession } from '@/lib/auth/session';
 import { getCompanyForUser } from '@/lib/auth/company';
 import { Topbar } from '@/components/layouts/topbar';
-import { Button } from '@/components/ui/button';
-import { formatDate } from '@/lib/utils';
-import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons';
+import { getDateStringInTz } from '@/lib/utils';
 import { BookAppointmentModal } from './book-appointment-modal';
 import { ScheduleView } from './schedule-view';
 
@@ -27,27 +24,24 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   const tenantDb = getTenantClient(companyId);
 
   // Selected date defaults to today in Africa/Mogadishu
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getDateStringInTz(new Date());
   const selectedDate = searchParams.date || todayStr;
 
-  const startOfDay = new Date(`${selectedDate}T00:00:00.000Z`);
-  const endOfDay = new Date(`${selectedDate}T23:59:59.999Z`);
+  // Extract year and month to load appointments for the month range
+  const [yearStr, monthStr] = selectedDate.split('-');
+  const year = parseInt(yearStr, 10) || 2026;
+  const month = parseInt(monthStr, 10) || 10;
 
-  // Compute Prev and Next dates
-  const curDateObj = new Date(selectedDate);
-  const prevDate = new Date(curDateObj.getTime() - 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const nextDate = new Date(curDateObj.getTime() + 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Cover range from previous month to next month to fill calendar grid
+  const startOfRange = new Date(Date.UTC(year, month - 2, 20, 0, 0, 0));
+  const endOfRange = new Date(Date.UTC(year, month + 1, 15, 23, 59, 59, 999));
 
   const [appointments, patients, dentists] = await Promise.all([
     tenantDb.appointment.findMany({
       where: {
         startTime: {
-          gte: startOfDay,
-          lte: endOfDay,
+          gte: startOfRange,
+          lte: endOfRange,
         },
       },
       include: {
@@ -101,12 +95,13 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   const appointmentItems = appointments.map((a) => ({
     id: a.id,
     dentistId: a.dentistId,
-    dentistName: a.dentist.user.name,
+    dentistName: a.dentist?.user?.name || 'Assigned Clinician',
     patientId: a.patientId,
     patientName: a.patient.fullName,
     patientPhone: a.patient.phone,
     patientAllergies: a.patient.allergies,
     patientMedicalHistory: a.patient.medicalHistory,
+    dateString: getDateStringInTz(a.startTime),
     startTime: a.startTime.toISOString(),
     endTime: a.endTime.toISOString(),
     status: a.status as any,
@@ -132,46 +127,10 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
       />
 
       <div className="p-4 lg:p-6 space-y-4 max-w-7xl">
-        {/* Date Navigator Toolbar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface border border-border rounded p-3">
-          <div className="flex items-center gap-2">
-            <Link href={`/app/schedule?date=${prevDate}`}>
-              <Button variant="secondary" size="sm" aria-label="Previous day">
-                <ChevronLeftIcon size={16} />
-              </Button>
-            </Link>
-
-            <Link href={`/app/schedule?date=${todayStr}`}>
-              <Button
-                variant={selectedDate === todayStr ? 'primary' : 'secondary'}
-                size="sm"
-              >
-                Today
-              </Button>
-            </Link>
-
-            <Link href={`/app/schedule?date=${nextDate}`}>
-              <Button variant="secondary" size="sm" aria-label="Next day">
-                <ChevronRightIcon size={16} />
-              </Button>
-            </Link>
-
-            <span className="text-body font-medium text-foreground ml-2">
-              {formatDate(selectedDate)}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 text-label text-muted">
-            <span className="font-mono">Timezone: Africa/Mogadishu (UTC+3)</span>
-            <span>&bull;</span>
-            <span>{appointments.length} appointments</span>
-          </div>
-        </div>
-
-        {/* Schedule Grid with Interactive Side Panel */}
         <ScheduleView
           companyId={companyId}
           selectedDate={selectedDate}
+          todayStr={todayStr}
           appointments={appointmentItems}
           dentists={dentistList}
         />

@@ -49,7 +49,6 @@ export const TENANT_SCOPED_MODELS = [
   "visit",
   "treatmentRecord",
   "invitation",
-  "staffProfile", // accessed via membership, but membership is tenant-scoped
   "companyMembership",
   "supportSession",
   "auditLog",
@@ -61,6 +60,11 @@ export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 const tenantScopedSet: ReadonlySet<string> = new Set<string>(
   TENANT_SCOPED_MODELS,
 );
+
+function isTenantScoped(model: string): boolean {
+  const lower = model.charAt(0).toLowerCase() + model.slice(1);
+  return tenantScopedSet.has(lower) || tenantScopedSet.has(model);
+}
 
 // ─── Tenant-scoped Prisma extension ──────────────────────────────────────────
 
@@ -85,25 +89,26 @@ export function getTenantClient(companyId: string) {
     query: {
       $allModels: {
         async findMany({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId };
           }
           return query(args);
         },
 
         async findFirst({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId };
           }
           return query(args);
         },
 
         async findUnique({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             // findUnique only accepts unique fields in `where`, so we
             // re-route through findFirst to add the companyId guard.
             // This trades a marginal perf cost for guaranteed isolation.
-            const modelDelegate = (prisma as any)[model];
+            const delegateName = model.charAt(0).toLowerCase() + model.slice(1);
+            const modelDelegate = (prisma as any)[delegateName];
             if (modelDelegate && typeof modelDelegate.findFirst === 'function') {
               return await modelDelegate.findFirst({
                 ...args,
@@ -115,14 +120,14 @@ export function getTenantClient(companyId: string) {
         },
 
         async create({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             (args.data as any).companyId = companyId;
           }
           return query(args);
         },
 
         async createMany({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             if (Array.isArray(args.data)) {
               args.data = args.data.map((d: any) => ({
                 ...d,
@@ -136,42 +141,42 @@ export function getTenantClient(companyId: string) {
         },
 
         async update({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId } as any;
           }
           return query(args);
         },
 
         async updateMany({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId };
           }
           return query(args);
         },
 
         async delete({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId } as any;
           }
           return query(args);
         },
 
         async deleteMany({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId };
           }
           return query(args);
         },
 
         async count({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId };
           }
           return query(args);
         },
 
         async aggregate({ model, args, query }) {
-          if (tenantScopedSet.has(model)) {
+          if (isTenantScoped(model)) {
             args.where = { ...args.where, companyId };
           }
           return query(args);

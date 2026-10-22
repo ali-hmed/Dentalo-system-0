@@ -195,18 +195,33 @@ async function main() {
     },
   });
 
-  // Sample Patient for Clinic 2 (For cross-tenant testing)
-  await prisma.patient.create({
+  // Sample Patients for Clinic 2
+  const patient4 = await prisma.patient.create({
     data: {
       companyId: company2.id,
       fullName: 'Khadra Ismail Duale',
       phone: '+252 63 1112233',
       gender: 'FEMALE',
+      medicalHistory: 'None',
+      allergies: null,
       status: 'ACTIVE',
     },
   });
 
-  // 5. Today's Appointments for Clinic 1 in Africa/Mogadishu time
+  const patient5 = await prisma.patient.create({
+    data: {
+      companyId: company2.id,
+      fullName: 'Mustafe Mohamed Egal',
+      phone: '+252 63 4455667',
+      gender: 'MALE',
+      medicalHistory: 'Type 2 diabetes (diet-controlled)',
+      allergies: 'Severe Penicillin allergy (anaphylaxis)',
+      notes: 'Prefers morning appointments',
+      status: 'ACTIVE',
+    },
+  });
+
+  // 5. Today's Appointments for Clinic 1 and Clinic 2 in Africa/Mogadishu time
   const today = new Date();
   const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -245,6 +260,48 @@ async function main() {
       version: 1,
     },
   });
+
+  // Clinic 2 appointments for Dr. Guled Hassan
+  const hargeisaMembership = await prisma.companyMembership.findFirst({
+    where: { companyId: company2.id, staffType: 'OWNER' },
+  });
+
+  if (hargeisaMembership) {
+    const hAppt1Start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0);
+    const hAppt1End = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 45, 0);
+    const hAppt2Start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30, 0);
+    const hAppt2End = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 15, 0);
+
+    await prisma.appointment.create({
+      data: {
+        companyId: company2.id,
+        patientId: patient4.id,
+        dentistId: hargeisaMembership.id,
+        date: dateOnly,
+        startTime: hAppt1Start,
+        endTime: hAppt1End,
+        status: 'ARRIVED',
+        type: 'CHECKUP',
+        notes: 'Routine dental hygiene examination and scaling',
+        version: 1,
+      },
+    });
+
+    await prisma.appointment.create({
+      data: {
+        companyId: company2.id,
+        patientId: patient5.id,
+        dentistId: hargeisaMembership.id,
+        date: dateOnly,
+        startTime: hAppt2Start,
+        endTime: hAppt2End,
+        status: 'SCHEDULED',
+        type: 'TREATMENT',
+        notes: 'Cavity preparation and resin restoration',
+        version: 1,
+      },
+    });
+  }
 
   // 6. Clinical Visit & Treatment Records
   const pastVisitDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
