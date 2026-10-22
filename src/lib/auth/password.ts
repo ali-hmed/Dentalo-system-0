@@ -1,10 +1,27 @@
 import bcrypt from 'bcryptjs';
-import { argon2Verify } from 'hash-wasm';
+import { argon2id, argon2Verify } from 'hash-wasm';
 
-const SALT_ROUNDS = 10;
+const ARGON2_CONFIG = {
+  iterations: 2,
+  memorySize: 19456, // 19 MiB
+  hashLength: 32,
+  parallelism: 1,
+  outputType: 'encoded' as const,
+};
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS);
+  try {
+    const salt = new Uint8Array(16);
+    crypto.getRandomValues(salt);
+    return await argon2id({
+      password,
+      salt,
+      ...ARGON2_CONFIG,
+    });
+  } catch {
+    // Pure JS fallback in case WASM execution is restricted
+    return bcrypt.hash(password, 10);
+  }
 }
 
 export async function verifyPassword(password: string, hashStr: string): Promise<boolean> {
@@ -20,4 +37,5 @@ export async function verifyPassword(password: string, hashStr: string): Promise
     return false;
   }
 }
+
 

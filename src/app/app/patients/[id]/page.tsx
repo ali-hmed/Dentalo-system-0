@@ -14,8 +14,8 @@ import { EditPatientModal } from './edit-patient-modal';
 export const dynamic = 'force-dynamic';
 
 interface PatientRecordPageProps {
-  params: { id: string };
-  searchParams: { tab?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ tab?: string }>;
 }
 
 export default async function PatientRecordPage({ params, searchParams }: PatientRecordPageProps) {
@@ -25,12 +25,15 @@ export default async function PatientRecordPage({ params, searchParams }: Patien
   const companyContext = await getCompanyForUser(session.user.id);
   if (!companyContext) return null;
 
+  const { id } = await params;
+  const sp = (await searchParams) || {};
+
   const companyId = companyContext.companyId;
   const tenantDb = getTenantClient(companyId);
 
   const [patient, activeDentists] = await Promise.all([
     tenantDb.patient.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         visits: {
           orderBy: { date: 'desc' },
@@ -68,7 +71,7 @@ export default async function PatientRecordPage({ params, searchParams }: Patien
     name: `${d.user.name} (${d.staffType})`,
   }));
 
-  const activeTab = searchParams.tab || 'history';
+  const activeTab = sp.tab || 'history';
 
   return (
     <div>

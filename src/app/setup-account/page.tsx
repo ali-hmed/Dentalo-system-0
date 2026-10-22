@@ -12,11 +12,12 @@ export const metadata = {
 };
 
 interface SetupAccountPageProps {
-  searchParams: { token?: string };
+  searchParams?: Promise<{ token?: string }>;
 }
 
 export default async function SetupAccountPage({ searchParams }: SetupAccountPageProps) {
-  const token = searchParams.token;
+  const sp = (await searchParams) || {};
+  const token = sp.token;
 
   if (!token) {
     return (

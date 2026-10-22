@@ -10,7 +10,7 @@ import { ScheduleView } from './schedule-view';
 export const dynamic = 'force-dynamic';
 
 interface SchedulePageProps {
-  searchParams: { date?: string };
+  searchParams?: Promise<{ date?: string }>;
 }
 
 export default async function SchedulePage({ searchParams }: SchedulePageProps) {
@@ -23,9 +23,10 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   const companyId = companyContext.companyId;
   const tenantDb = getTenantClient(companyId);
 
+  const sp = (await searchParams) || {};
   // Selected date defaults to today in Africa/Mogadishu
   const todayStr = getDateStringInTz(new Date());
-  const selectedDate = searchParams.date || todayStr;
+  const selectedDate = sp.date || todayStr;
 
   // Extract year and month to load appointments for the month range
   const [yearStr, monthStr] = selectedDate.split('-');

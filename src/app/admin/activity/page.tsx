@@ -8,15 +8,16 @@ import { formatDateTime } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 interface ActivityPageProps {
-  searchParams: {
+  searchParams?: Promise<{
     severity?: string;
     action?: string;
-  };
+  }>;
 }
 
 export default async function AdminActivityPage({ searchParams }: ActivityPageProps) {
   const admin = await requireSuperAdmin();
-  const severityFilter = searchParams.severity;
+  const sp = (await searchParams) || {};
+  const severityFilter = sp.severity;
 
   const whereClause: any = {};
   if (severityFilter && severityFilter !== 'ALL') {

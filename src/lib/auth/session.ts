@@ -37,7 +37,7 @@ export async function createSession(
 }
 
 export async function setSessionCookie(token: string, expiresAt: Date) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
@@ -48,13 +48,13 @@ export async function setSessionCookie(token: string, expiresAt: Date) {
 }
 
 export async function deleteSessionCookie() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
 export async function getSession(): Promise<ValidatedSession | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (!token) {
@@ -113,7 +113,7 @@ export async function getSession(): Promise<ValidatedSession | null> {
 export async function invalidateSession(token?: string) {
   try {
     if (!token) {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
     }
 

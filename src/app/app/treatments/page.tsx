@@ -11,7 +11,7 @@ import { ToothIcon } from '@/components/icons';
 export const dynamic = 'force-dynamic';
 
 interface TreatmentsPageProps {
-  searchParams: { status?: string; q?: string };
+  searchParams?: Promise<{ status?: string; q?: string }>;
 }
 
 export default async function TreatmentsPage({ searchParams }: TreatmentsPageProps) {
@@ -21,9 +21,10 @@ export default async function TreatmentsPage({ searchParams }: TreatmentsPagePro
   const companyContext = await getCompanyForUser(session.user.id);
   if (!companyContext) return null;
 
+  const sp = (await searchParams) || {};
   const tenantDb = getTenantClient(companyContext.companyId);
-  const statusFilter = searchParams.status;
-  const query = searchParams.q?.trim().toLowerCase();
+  const statusFilter = sp.status;
+  const query = sp.q?.trim().toLowerCase();
 
   const whereClause: any = {};
   if (statusFilter && statusFilter !== 'ALL') {
@@ -66,7 +67,7 @@ export default async function TreatmentsPage({ searchParams }: TreatmentsPagePro
             <input
               type="search"
               name="q"
-              defaultValue={searchParams.q || ''}
+              defaultValue={sp.q || ''}
               placeholder="Search by procedure name, tooth #..."
               className="w-full text-body bg-surface border border-border rounded px-3 py-1.5 focus:border-accent"
             />

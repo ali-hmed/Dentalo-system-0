@@ -13,7 +13,7 @@ import { RegisterPatientModal } from './register-patient-modal';
 export const dynamic = 'force-dynamic';
 
 interface PatientsPageProps {
-  searchParams: { q?: string };
+  searchParams?: Promise<{ q?: string }>;
 }
 
 export default async function PatientsListPage({ searchParams }: PatientsPageProps) {
@@ -23,8 +23,9 @@ export default async function PatientsListPage({ searchParams }: PatientsPagePro
   const companyContext = await getCompanyForUser(session.user.id);
   if (!companyContext) return null;
 
+  const sp = (await searchParams) || {};
   const tenantDb = getTenantClient(companyContext.companyId);
-  const query = searchParams.q?.trim().toLowerCase();
+  const query = sp.q?.trim().toLowerCase();
 
   const whereClause: any = {};
   if (query) {
@@ -63,7 +64,7 @@ export default async function PatientsListPage({ searchParams }: PatientsPagePro
           <input
             type="search"
             name="q"
-            defaultValue={searchParams.q || ''}
+            defaultValue={sp.q || ''}
             placeholder="Search patients by name or phone number..."
             className="w-full text-body bg-surface border border-border rounded px-3 py-1.5 focus:border-accent"
           />

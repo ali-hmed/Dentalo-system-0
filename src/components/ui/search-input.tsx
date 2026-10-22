@@ -14,7 +14,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     const [value, setValue] = React.useState(
       (props.defaultValue as string) ?? ""
     );
-    const timerRef = React.useRef<ReturnType<typeof setTimeout>>();
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const next = e.target.value;

@@ -3,13 +3,13 @@ import { headers } from 'next/headers';
 /**
  * Validates request origin against allowed host to protect against Cross-Site Request Forgery.
  */
-export function verifyCsrfOrigin(): boolean {
+export async function verifyCsrfOrigin(): Promise<boolean> {
   // In development, allow localhost
   if (process.env.NODE_ENV === 'development') {
     return true;
   }
 
-  const headersList = headers();
+  const headersList = await headers();
   const origin = headersList.get('origin');
   const host = headersList.get('host');
 

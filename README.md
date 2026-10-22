@@ -138,3 +138,27 @@ To run the TypeScript type checker:
 ```bash
 npm run type-check
 ```
+
+---
+
+## 6. Cloudflare Deployment (OpenNext)
+
+This application is configured for deployment to **Cloudflare Workers** using `@opennextjs/cloudflare` with the Next.js 15 App Router and `@prisma/adapter-neon` serverless driver adapters.
+
+### Cloudflare Build & Deploy Configuration
+In your **Cloudflare Dashboard** under **Workers & Pages > dentalo-system-0 > Settings > Builds**:
+- **Build command**: `npx opennextjs-cloudflare build`
+- **Deploy command**: `npx opennextjs-cloudflare deploy`
+- **Root directory**: `/`
+
+### Required Environment Variables
+Configure the following environment variables in your Cloudflare dashboard under **Settings > Variables and Secrets**:
+
+| Variable | Description | Example / Value |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Neon PostgreSQL pooled connection string | `postgresql://neondb_owner:...@ep-lively-mud-b5cldvvu-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
+| `SESSION_SECRET` | 32+ char secret for session token hashing | `super-secret-dentalo-session-key-32chars` |
+| `NEXT_PUBLIC_APP_URL` | Canonical public URL of your deployment | `https://dentalo-system-0.workers.dev` |
+| `APP_TIMEZONE` | Clinic operating timezone | `Africa/Mogadishu` |
+| `RESEND_API_KEY` | (Optional) Resend API key for automated emails | `re_...` |
+

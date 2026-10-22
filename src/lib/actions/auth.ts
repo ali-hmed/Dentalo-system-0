@@ -14,12 +14,12 @@ export async function loginAction(
   formData: FormData
 ): Promise<ActionResult<{ redirectUrl: string }>> {
   // 1. Verify CSRF
-  if (!verifyCsrfOrigin()) {
+  if (!(await verifyCsrfOrigin())) {
     return { success: false, error: 'Invalid request origin. Please reload and try again.' };
   }
 
   // 2. Rate limiting by IP
-  const headersList = headers();
+  const headersList = await headers();
   const forwardedFor = headersList.get('x-forwarded-for');
   const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '127.0.0.1';
   const rateLimitKey = `login:${ip}`;
@@ -112,7 +112,7 @@ export async function setupAccountAction(
   formData: FormData
 ): Promise<ActionResult<{ redirectUrl: string }>> {
   // 1. Verify CSRF
-  if (!verifyCsrfOrigin()) {
+  if (!(await verifyCsrfOrigin())) {
     return { success: false, error: 'Invalid request origin. Please reload and try again.' };
   }
 
@@ -148,7 +148,7 @@ export async function setupAccountAction(
   const passwordHash = await hashPassword(parsed.data.password);
 
   // 5. Atomic transaction
-  const headersList = headers();
+  const headersList = await headers();
   const forwardedFor = headersList.get('x-forwarded-for');
   const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '127.0.0.1';
   const userAgent = headersList.get('user-agent') || undefined;

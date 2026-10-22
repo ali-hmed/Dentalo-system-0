@@ -11,14 +11,15 @@ import { CompanyActions } from './company-actions';
 export const dynamic = 'force-dynamic';
 
 interface CompanyDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function CompanyDetailPage({ params }: CompanyDetailPageProps) {
   const admin = await requireSuperAdmin();
+  const { id } = await params;
 
   const company = await prisma.company.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       memberships: {
         include: {

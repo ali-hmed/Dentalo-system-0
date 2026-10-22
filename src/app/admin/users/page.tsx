@@ -9,12 +9,13 @@ import { UserRowActions } from './user-row-actions';
 export const dynamic = 'force-dynamic';
 
 interface UsersPageProps {
-  searchParams: { q?: string };
+  searchParams?: Promise<{ q?: string }>;
 }
 
 export default async function AdminUsersPage({ searchParams }: UsersPageProps) {
   const admin = await requireSuperAdmin();
-  const query = searchParams.q?.trim().toLowerCase();
+  const sp = (await searchParams) || {};
+  const query = sp.q?.trim().toLowerCase();
 
   const whereClause: any = {};
   if (query) {
@@ -50,7 +51,7 @@ export default async function AdminUsersPage({ searchParams }: UsersPageProps) {
           <input
             type="search"
             name="q"
-            defaultValue={searchParams.q || ''}
+            defaultValue={sp.q || ''}
             placeholder="Search users by name or email..."
             className="w-full text-body bg-surface border border-border rounded px-3 py-1.5 focus:border-accent"
           />
